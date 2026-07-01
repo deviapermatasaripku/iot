@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Environment Monitor v7</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
+
+  :root {
+    --bg-dark: #0a0e0f;
+    --bg-card: #0f1618;
+    --border-safe: #00ff88;
+    --border-warn: #ffaa00;
+    --border-danger: #ff3333;
+    --border-dim: #1e3038;
+    --text-main: #c8e8f0;
+    --text-dim: #4a7a8a;
+    --text-bright: #e8f8ff;
+    --accent-green: #00ff88;
+    --accent-yellow: #ffaa00;
+    --accent-red: #ff3333;
+    --accent-cyan: #00c8ff;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-display: 'Orbitron', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    padding: 10px;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(0,200,255,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,255,136,0.03) 0%, transparent 60%);
+  }
+
+  .header {
+    border: 1px solid var(--border-safe);
+    background: var(--bg-card);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px; 
+    position: relative;
+    box-shadow: 0 0 20px rgba(0,255,136,0.08);
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+  }
+  .logo-block { display: flex; align-items: center; gap: 14px; }
+  .logo-box {
+    border: 2px solid var(--accent-green);
+    padding: 6px 8px;
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-green);
+    line-height: 1.2;
+    text-align: center;
+    background: rgba(0,255,136,0.05);
+    box-shadow: 0 0 10px rgba(0,255,136,0.2);
+  }
+  .title-block h1 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--text-bright);
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(0,255,136,0.3);
+  }
+  .subtitle { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; margin-top: 2px; }
+  .subtitle span { color: var(--accent-cyan); }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .uptime-block { font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
+  .uptime-block span { color: var(--accent-cyan); font-size: 18px; font-weight: bold; text-shadow: 0 0 10px var(--accent-cyan); }
+
+  .status-badge {
+    border: 2px solid var(--accent-green);
+    padding: 8px 18px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-green);
+    letter-spacing: 2px;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,255,136,0.05);
+    box-shadow: 0 0 15px rgba(0,255,136,0.2);
+    transition: all 0.3s;
+  }
+  .status-badge.warn { border-color: var(--accent-yellow); color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255,170,0,0.2); }
+  .status-badge.danger { border-color: var(--accent-red); color: var(--accent-red); box-shadow: 0 0 15px rgba(255,51,51,0.3); animation: dangerPulse 0.5s infinite alternate; }
+  @keyframes dangerPulse {
+    from { box-shadow: 0 0 10px rgba(255,51,51,0.2); }
+    to   { box-shadow: 0 0 25px rgba(255,51,51,0.5); }
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); animation: blink 1.5s infinite; }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
+  .serial-indicator {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--text-dim);
+    padding: 6px 12px;
+    border: 1px solid var(--border-dim);
+    margin-bottom: 8px;
+    background: var(--bg-card);
+  }
+  .serial-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+  .serial-dot.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); animation: blink 2s infinite; }
+  .serial-dot.demo { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+  .connect-btn {
+    margin-left: auto;
+    border: 1px solid var(--accent-cyan); color: var(--accent-cyan);
+    background: transparent; padding: 4px 14px;
+    font-family: var(--font-mono); font-size: 11px;
+    cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .connect-btn:hover { background: rgba(0,200,255,0.1); box-shadow: 0 0 8px rgba(0,200,255,0.3); }
+
+  /* Log serial box */
+  .serial-log {
+    background: #050a0b;
+    border: 1px solid var(--border-dim);
+    padding: 8px 12px;
+    font-size: 10px;
+    color: #3a6a5a;
+    height: 52px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+    font-family: var(--font-mono);
+    line-height: 1.5;
+  }
+  .serial-log .raw { color: #00cc66; }
+  .serial-log .info { color: #4a7a8a; }
+
+  .sim-bar {
+    background: var(--bg-card); border: 1px solid var(--border-dim);
+    padding: 10px 20px; display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 8px; font-size: 12px;
+  }
+  .sim-label { color: var(--text-dim); letter-spacing: 1px; }
+  .sim-btns { display: flex; gap: 8px; }
+  .sim-btn {
+    border: 1px solid; padding: 5px 16px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: bold;
+    letter-spacing: 1px; cursor: pointer; background: transparent; transition: all 0.2s;
+  }
+  .sim-btn.aman { border-color: var(--accent-green); color: var(--accent-green); }
+  .sim-btn.waspada { border-color: var(--accent-yellow); color: var(--accent-yellow); }
+  .sim-btn.bahaya { border-color: var(--accent-red); color: var(--accent-red); }
+  .sim-btn.aman.active, .sim-btn.aman:hover { background: rgba(0,255,136,0.15); box-shadow: 0 0 10px rgba(0,255,136,0.3); }
+  .sim-btn.waspada.active, .sim-btn.waspada:hover { background: rgba(255,170,0,0.15); box-shadow: 0 0 10px rgba(255,170,0,0.3); }
+  .sim-btn.bahaya.active, .sim-btn.bahaya:hover { background: rgba(255,51,51,0.15); box-shadow: 0 0 10px rgba(255,51,51,0.3); }
+  .update-note { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
+
+  .sensor-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-bottom: 8px;
+  }
+  .sensor-card {
+    background: var(--bg-card); border: 1px solid var(--border-safe);
+    padding: 18px 16px; position: relative; transition: all 0.3s;
+    box-shadow: 0 0 12px rgba(0,255,136,0.05);
+  }
+  .sensor-card.warn { border-color: var(--border-warn); box-shadow: 0 0 12px rgba(255,170,0,0.1); }
+  .sensor-card.danger { border-color: var(--border-danger); box-shadow: 0 0 12px rgba(255,51,51,0.15); }
+  .sensor-card::after {
+    content: ''; position: absolute;
+    bottom: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-green); transition: background 0.3s;
+  }
+  .sensor-card.warn::after { background: var(--accent-yellow); }
+  .sensor-card.danger::after { background: var(--accent-red); }
+  .sensor-label { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sensor-value { font-family: var(--font-display); font-size: 42px; font-weight: 900; color: var(--text-bright); line-height: 1; text-shadow: 0 0 15px rgba(200,232,240,0.3); }
+  .sensor-unit { font-size: 14px; color: var(--text-dim); vertical-align: super; margin-left: 2px; }
+  .sensor-bar { height: 3px; background: var(--border-dim); margin: 10px 0; border-radius: 2px; overflow: hidden; }
+  .sensor-bar-fill { height: 100%; background: var(--accent-green); border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1), background 0.3s; }
+  .sensor-status {
+    font-size: 11px; font-weight: bold; letter-spacing: 2px;
+    padding: 3px 10px; border: 1px solid var(--accent-green);
+    color: var(--accent-green); display: inline-block;
+    background: rgba(0,255,136,0.05); transition: all 0.3s;
+  }
+  .sensor-status.warn { border-color: var(--accent-yellow); color: var(--accent-yellow); background: rgba(255,170,0,0.05); }
+  .sensor-status.danger { border-color: var(--accent-red); color: var(--accent-red); background: rgba(255,51,51,0.05); }
+
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .panel { background: var(--bg-card); border: 1px solid var(--border-dim); padding: 16px; }
+  .panel-title {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 2px;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::before { content: '—'; color: var(--accent-cyan); }
+
+  .led-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .led-box {
+    flex: 1; border: 1px solid var(--border-dim); padding: 12px 8px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; font-size: 10px; letter-spacing: 1px; color: var(--text-dim);
+  }
+  .led { width: 28px; height: 28px; border-radius: 50%; background: #111; border: 2px solid #222; transition: all 0.3s; }
+  .led.on-green { background: var(--accent-green); border-color: #00ff88aa; box-shadow: 0 0 12px var(--accent-green), 0 0 25px rgba(0,255,136,0.4); animation: ledGlow 2s infinite alternate; }
+  .led.on-yellow { background: var(--accent-yellow); border-color: #ffaa00aa; box-shadow: 0 0 12px var(--accent-yellow), 0 0 25px rgba(255,170,0,0.4); animation: ledGlow 0.5s infinite alternate; }
+  .led.on-red { background: var(--accent-red); border-color: #ff3333aa; box-shadow: 0 0 12px var(--accent-red), 0 0 25px rgba(255,51,51,0.5); animation: ledGlow 0.3s infinite alternate; }
+  @keyframes ledGlow { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+
+  .buzzer-box { border: 1px solid var(--border-dim); padding: 10px 14px; margin-bottom: 10px; font-size: 11px; }
+  .buzzer-label { color: var(--text-dim); letter-spacing: 1px; font-size: 10px; margin-bottom: 6px; }
+  .buzzer-status { color: var(--text-main); }
+  .buzzer-status.active { color: var(--accent-red); animation: blink 0.3s infinite; }
+  .led-info { font-size: 11px; color: var(--text-dim); line-height: 1.7; border-top: 1px solid var(--border-dim); padding-top: 10px; }
+  .led-info span { color: var(--accent-green); }
+  .led-info span.warn { color: var(--accent-yellow); }
+  .led-info span.danger { color: var(--accent-red); }
+
+  .threshold-table { width: 100%; }
+  .threshold-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(30,48,56,0.5); font-size: 12px; }
+  .threshold-row:last-child { border-bottom: none; }
+  .threshold-name { color: var(--text-dim); }
+  .threshold-vals { display: flex; gap: 12px; }
+  .wsp { color: var(--accent-yellow); font-size: 11px; }
+  .bhy { color: var(--accent-red); font-size: 11px; }
+
+  .kalib-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(30,48,56,0.5); font-size: 12px; }
+  .kalib-row:last-child { border-bottom: none; }
+  .kalib-name { color: var(--text-dim); }
+  .kalib-val { color: var(--accent-cyan); font-weight: bold; }
+
+  .chart-section { background: var(--bg-card); border: 1px solid var(--border-dim); padding: 16px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .chart-legend { display: flex; gap: 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+  .legend-line { width: 24px; height: 2px; border-radius: 2px; }
+  .chart-wrap { position: relative; height: 160px; }
+  canvas#chart { width: 100% !important; height: 160px !important; }
+
+  @media (max-width: 900px) {
+    .sensor-grid { grid-template-columns: repeat(2,1fr); }
+    .bottom-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SERIAL STATUS BAR -->
+<div class="serial-indicator">
+  <div class="serial-dot demo" id="serialDot"></div>
+  <span id="serialStatus">Mode Demo — Klik CONNECT untuk hubungkan Arduino</span>
+  <button class="connect-btn" id="connectBtn" onclick="connectSerial()">⚡ CONNECT ARDUINO</button>
+</div>
+
+<!-- LOG SERIAL -->
+<div class="serial-log" id="serialLog">
+  <span class="info">// Log serial akan muncul di sini saat Arduino terhubung...</span>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-block">
+    <div class="logo-box">ENV<br>MON</div>
+    <div class="title-block">
+      <h1>Smart Home Security and Environment Monitoring System Based on Arduino</h1>
+      <div class="subtitle">
+        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Arduino</span>
+      </div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="uptime-block">UPTIME: <span id="uptime">00:00</span></div>
+    <div class="status-badge" id="mainStatus">
+      <div class="dot" id="mainDot"></div>
+      <span id="mainStatusText">AMAN</span>
+    </div>
+  </div>
+</div>
+
+<!-- SIM BAR -->
+<div class="sim-bar">
+  <span class="sim-label">// SIMULASI KONDISI :</span>
+  <div class="sim-btns">
+    <button class="sim-btn aman active" id="btnAman" onclick="setMode('aman')">AMAN</button>
+    <button class="sim-btn waspada" id="btnWaspada" onclick="setMode('waspada')">WASPADA</button>
+    <button class="sim-btn bahaya" id="btnBahaya" onclick="setMode('bahaya')">BAHAYA</button>
+  </div>
+  <span class="update-note">// update tiap 2 detik</span>
+</div>
+
+<!-- SENSOR CARDS -->
+<div class="sensor-grid">
+  <div class="sensor-card" id="cardSuhu">
+    <div class="sensor-label"><span>⊕</span> SUHU</div>
+    <div class="sensor-value"><span id="valSuhu">24.7</span><span class="sensor-unit">°C</span></div>
+    <div class="sensor-bar"><div class="sensor-bar-fill" id="barSuhu" style="width:30%"></div></div>
+    <span class="sensor-status" id="statusSuhu">AMAN</span>
+  </div>
+  <div class="sensor-card" id="cardKelembaban">
+    <div class="sensor-label"><span>○</span> KELEMBABAN</div>
+    <div class="sensor-value"><span id="valKelembaban">52</span><span class="sensor-unit">%</span></div>
+    <div class="sensor-bar"><div class="sensor-bar-fill" id="barKelembaban" style="width:52%"></div></div>
+    <span class="sensor-status" id="statusKelembaban">AMAN</span>
+  </div>
+  <div class="sensor-card" id="cardGas">
+    <div class="sensor-label"><span>⚡</span> GAS MQ2</div>
+    <div class="sensor-value"><span id="valGas">307</span><span class="sensor-unit">raw</span></div>
+    <div class="sensor-bar"><div class="sensor-bar-fill" id="barGas" style="width:25%"></div></div>
+    <span class="sensor-status" id="statusGas">AMAN</span>
+  </div>
+  <div class="sensor-card" id="cardJarak">
+    <div class="sensor-label"><span>→</span> JARAK</div>
+    <div class="sensor-value"><span id="valJarak">36.1</span><span class="sensor-unit">cm</span></div>
+    <div class="sensor-bar"><div class="sensor-bar-fill" id="barJarak" style="width:60%"></div></div>
+    <span class="sensor-status" id="statusJarak">AMAN</span>
+  </div>
+</div>
+
+<!-- BOTTOM PANELS -->
+<div class="bottom-grid">
+  <div class="panel">
+    <div class="panel-title">LED &amp; BUZZER</div>
+    <div class="led-row">
+      <div class="led-box"><div class="led on-green" id="ledHijau"></div><span>HIJAU</span></div>
+      <div class="led-box"><div class="led" id="ledKuning"></div><span>KUNING</span></div>
+      <div class="led-box"><div class="led" id="ledMerah"></div><span>MERAH</span></div>
+    </div>
+    <div class="buzzer-box">
+      <div class="buzzer-label">BUZZER</div>
+      <div class="buzzer-status" id="buzzerStatus">— diam</div>
+    </div>
+    <div class="led-info" id="ledInfo">
+      <span>LED Hijau nyala terus</span><br>Buzzer diam
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">THRESHOLD SENSOR</div>
+    <div class="threshold-table">
+      <div class="threshold-row">
+        <span class="threshold-name">Suhu</span>
+        <div class="threshold-vals"><span class="wsp">≥30°C WSP</span><span class="bhy">≥38°C BHY</span></div>
+      </div>
+      <div class="threshold-row">
+        <span class="threshold-name">Kelembaban</span>
+        <div class="threshold-vals"><span class="wsp">≥70% WSP</span><span class="bhy">≥85% BHY</span></div>
+      </div>
+      <div class="threshold-row">
+        <span class="threshold-name">Gas MQ2</span>
+        <div class="threshold-vals"><span class="wsp" id="thGasW">≥400 WSP</span><span class="bhy" id="thGasB">≥700 BHY</span></div>
+      </div>
+      <div class="threshold-row">
+        <span class="threshold-name">Jarak</span>
+        <div class="threshold-vals"><span class="wsp" id="thJrkW">≤40cm WSP</span><span class="bhy" id="thJrkB">≤10cm BHY</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">KALIBRASI</div>
+    <div class="kalib-row"><span class="kalib-name">Gas Baseline</span><span class="kalib-val" id="kalibBase">—</span></div>
+    <div class="kalib-row"><span class="kalib-name">Gas WARN</span><span class="kalib-val" id="kalibGW">400</span></div>
+    <div class="kalib-row"><span class="kalib-name">Gas DANGER</span><span class="kalib-val" id="kalibGD">700</span></div>
+    <div class="kalib-row"><span class="kalib-name">Jarak Kotak</span><span class="kalib-val" id="kalibJK">—</span></div>
+    <div class="kalib-row"><span class="kalib-name">DIST WARN</span><span class="kalib-val" id="kalibDW">40.0 cm</span></div>
+    <div class="kalib-row"><span class="kalib-name">DIST DANGER</span><span class="kalib-val" id="kalibDD">10.0 cm</span></div>
+  </div>
+</div>
+
+<!-- CHART -->
+<div class="chart-section">
+  <div class="chart-header">
+    <div class="panel-title" style="margin:0">RIWAYAT SENSOR (10 PEMBACAAN TERAKHIR)</div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-line" style="background:#ff4444"></div> Suhu (°C)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#00aaff"></div> Kelembaban (%)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#ffaa00"></div> Gas (/10)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#00ff88"></div> Jarak (cm)</div>
+    </div>
+  </div>
+  <div class="chart-wrap"><canvas id="chart"></canvas></div>
+</div>
+
+<script>
+// =====================================================
+//  STATE
+// =====================================================
+let mode = 'aman';
+let serialPort = null;
+let serialReader = null;
+let serialBuffer = '';
+let startTime = Date.now();
+let isSerialConnected = false;
+
+let sensorData = { suhu: 24.7, kelembaban: 52, gas: 307, jarak: 36.1 };
+
+// Threshold tetap (HARUS SAMA dengan #define di kode Arduino v7)
+// Tidak lagi dikirim via serial pada v7, jadi kita set langsung di sini.
+let kalibData = {
+  gasBaseline: null,
+  gasWarn: 400,      // GAS_WARN
+  gasDanger: 700,    // GAS_DANGER
+  jarakKotak: null,
+  distWarn: 40.0,    // DIST_WARN
+  distDanger: 10.0   // DIST_DANGER
+};
+
+const history = {
+  labels: Array(10).fill(''),
+  suhu: Array(10).fill(25),
+  kelembaban: Array(10).fill(52),
+  gas: Array(10).fill(30),
+  jarak: Array(10).fill(36)
+};
+
+// =====================================================
+//  UPTIME
+// =====================================================
+setInterval(() => {
+  const secs = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(secs / 60)).padStart(2,'0');
+  const s = String(secs % 60).padStart(2,'0');
+  document.getElementById('uptime').textContent = `${m}:${s}`;
+}, 1000);
+
+// =====================================================
+//  LOG SERIAL
+// =====================================================
+function addLog(text, type='info') {
+  const log = document.getElementById('serialLog');
+  const span = document.createElement('div');
+  span.className = type;
+  span.textContent = text;
+  log.appendChild(span);
+  // Batasi 50 baris
+  while (log.children.length > 50) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+
+// =====================================================
+//  SIMULASI
+// =====================================================
+const modeData = {
+  aman:    { suhu:[22,25], kelembaban:[45,60], gas:[200,310], jarak:[45,70] },
+  waspada: { suhu:[30,36], kelembaban:[70,83], gas:[400,680], jarak:[11,39] },
+  bahaya:  { suhu:[38,45], kelembaban:[85,95], gas:[700,900], jarak:[1,10] }
+};
+
+function rnd(min, max) { return +(min + Math.random()*(max-min)).toFixed(1); }
+
+function setMode(m) {
+  mode = m;
+  ['aman','waspada','bahaya'].forEach(k => {
+    document.getElementById('btn'+k.charAt(0).toUpperCase()+k.slice(1)).classList.remove('active');
+  });
+  document.getElementById('btn'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
+  if (!isSerialConnected) updateFromSimulation();
+}
+
+function updateFromSimulation() {
+  const d = modeData[mode];
+  sensorData.suhu       = rnd(...d.suhu);
+  sensorData.kelembaban = rnd(...d.kelembaban);
+  sensorData.gas        = Math.round(rnd(...d.gas));
+  sensorData.jarak      = rnd(...d.jarak);
+  updateUI();
+}
+
+// =====================================================
+//  STATUS LOGIC — menyesuaikan threshold Arduino v7
+//  (DIST_WARN 40, DIST_DANGER 10, GAS_WARN 400, GAS_DANGER 700)
+// =====================================================
+function getStatus(key, val) {
+  if (key === 'suhu')       return val >= 38 ? 'danger' : val >= 30 ? 'warn' : 'safe';
+  if (key === 'kelembaban') return val >= 85 ? 'danger' : val >= 70 ? 'warn' : 'safe';
+  if (key === 'gas') {
+    const gw = kalibData.gasWarn   ?? 400;
+    const gd = kalibData.gasDanger ?? 700;
+    return val >= gd ? 'danger' : val >= gw ? 'warn' : 'safe';
+  }
+  if (key === 'jarak') {
+    // d >= 999 artinya tidak ada objek terdeteksi -> AMAN (sesuai kode Arduino)
+    if (val >= 999) return 'safe';
+    const dw = kalibData.distWarn   ?? 40;
+    const dd = kalibData.distDanger ?? 10;
+    return val <= dd ? 'danger' : val <= dw ? 'warn' : 'safe';
+  }
+  return 'safe';
+}
+
+function overallStatus() {
+  const s = ['suhu','kelembaban','gas','jarak'].map(k => getStatus(k, sensorData[k]));
+  if (s.includes('danger')) return 'danger';
+  if (s.includes('warn'))   return 'warn';
+  return 'safe';
+}
+
+// rawVal = nilai ASLI sensor, dipakai untuk menentukan status AMAN/WASPADA/BAHAYA.
+// barVal = nilai yang sudah diolah khusus untuk lebar progress bar (boleh beda dari rawVal,
+//          misalnya untuk jarak yang divisualkan terbalik: makin dekat -> bar makin penuh).
+// Status TIDAK BOLEH dihitung dari barVal, karena akan salah (ini bug yang kemarin terjadi).
+function applyCardStatus(cardId, statusId, barId, rawVal, barVal, max, key) {
+  const st = getStatus(key, rawVal);
+  document.getElementById(cardId).className  = 'sensor-card' + (st==='danger'?' danger': st==='warn'?' warn':'');
+  const badge = document.getElementById(statusId);
+  badge.className = 'sensor-status' + (st==='danger'?' danger': st==='warn'?' warn':'');
+  badge.textContent = st==='danger' ? 'BAHAYA' : st==='warn' ? 'WASPADA' : 'AMAN';
+  const bar = document.getElementById(barId);
+  let pct = Math.min(100, Math.max(0, (barVal/max)*100));
+  bar.style.width = pct + '%';
+  bar.style.background = st==='danger' ? '#ff3333' : st==='warn' ? '#ffaa00' : '#00ff88';
+}
+
+function updateUI() {
+  const { suhu, kelembaban, gas, jarak } = sensorData;
+
+  document.getElementById('valSuhu').textContent      = suhu.toFixed(1);
+  document.getElementById('valKelembaban').textContent = Math.round(kelembaban);
+  document.getElementById('valGas').textContent       = gas;
+  document.getElementById('valJarak').textContent     = (jarak >= 999) ? '--.-' : jarak.toFixed(1);
+
+  applyCardStatus('cardSuhu',       'statusSuhu',       'barSuhu',       suhu,       suhu,       50,   'suhu');
+  applyCardStatus('cardKelembaban', 'statusKelembaban', 'barKelembaban', kelembaban, kelembaban, 100,  'kelembaban');
+  applyCardStatus('cardGas',        'statusGas',        'barGas',        gas,        gas,        1000, 'gas');
+  // Status jarak dihitung dari nilai ASLI (jarak), bar pakai nilai olahan (100-jarak) hanya untuk visual.
+  // jarak>=999 berarti tidak ada objek terdeteksi -> rawVal tetap 999 (AMAN), bar dikosongkan (0).
+  applyCardStatus('cardJarak',      'statusJarak',      'barJarak',      jarak,      (jarak>=999?0:100-jarak), 100, 'jarak');
+
+  const ov = overallStatus();
+  const mainBadge = document.getElementById('mainStatus');
+  document.getElementById('mainStatusText').textContent = ov==='danger' ? 'BAHAYA' : ov==='warn' ? 'WASPADA' : 'AMAN';
+  mainBadge.className = 'status-badge' + (ov==='danger' ? ' danger' : ov==='warn' ? ' warn' : '');
+  const dot = document.getElementById('mainDot');
+  dot.style.background = ov==='danger' ? '#ff3333' : ov==='warn' ? '#ffaa00' : '#00ff88';
+  dot.style.boxShadow  = ov==='danger' ? '0 0 8px #ff3333' : ov==='warn' ? '0 0 8px #ffaa00' : '0 0 8px #00ff88';
+
+  // LED
+  const ledH = document.getElementById('ledHijau');
+  const ledK = document.getElementById('ledKuning');
+  const ledM = document.getElementById('ledMerah');
+  const buzz = document.getElementById('buzzerStatus');
+  const info = document.getElementById('ledInfo');
+  ledH.className = 'led'; ledK.className = 'led'; ledM.className = 'led';
+  buzz.className = 'buzzer-status';
+
+  if (ov === 'safe') {
+    ledH.classList.add('on-green');
+    buzz.textContent = '— diam';
+    info.innerHTML = '<span>LED Hijau nyala terus</span><br>Buzzer diam';
+  } else if (ov === 'warn') {
+    ledK.classList.add('on-yellow');
+    buzz.textContent = '♪ beep lambat';
+    buzz.classList.add('active');
+    info.innerHTML = '<span class="warn">LED Kuning berkedip</span><br><span class="warn">Buzzer beep lambat</span>';
+  } else {
+    ledM.classList.add('on-red');
+    buzz.textContent = '⚠ ALARM CEPAT!';
+    buzz.classList.add('active');
+    info.innerHTML = '<span class="danger">LED MERAH KEDIP CEPAT!</span><br><span class="danger">BUZZER ALARM!</span>';
+  }
+
+  // Chart history
+  const now = new Date();
+  const label = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  history.labels.push(label); history.labels.shift();
+  history.suhu.push(suhu); history.suhu.shift();
+  history.kelembaban.push(kelembaban); history.kelembaban.shift();
+  history.gas.push(+(gas/10).toFixed(1)); history.gas.shift();
+  history.jarak.push(jarak >= 999 ? 100 : jarak); history.jarak.shift();
+  drawChart();
+}
+
+function updateKalibUI() {
+  const k = kalibData;
+  if (k.gasBaseline !== null) document.getElementById('kalibBase').textContent = k.gasBaseline;
+  if (k.gasWarn     !== null) { document.getElementById('kalibGW').textContent = k.gasWarn; document.getElementById('thGasW').textContent = `≥${k.gasWarn} WSP`; }
+  if (k.gasDanger   !== null) { document.getElementById('kalibGD').textContent = k.gasDanger; document.getElementById('thGasB').textContent = `≥${k.gasDanger} BHY`; }
+  if (k.jarakKotak  !== null) { document.getElementById('kalibJK').textContent = k.jarakKotak.toFixed(1)+' cm'; }
+  if (k.distWarn    !== null) { document.getElementById('kalibDW').textContent = k.distWarn.toFixed(1)+' cm'; document.getElementById('thJrkW').textContent = `≤${k.distWarn.toFixed(0)}cm WSP`; }
+  if (k.distDanger  !== null) { document.getElementById('kalibDD').textContent = k.distDanger.toFixed(1)+' cm'; document.getElementById('thJrkB').textContent = `≤${k.distDanger.toFixed(0)}cm BHY`; }
+}
+
+// =====================================================
+//  CHART
+// =====================================================
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+function resizeCanvas() { canvas.width = canvas.parentElement.clientWidth; canvas.height = 160; }
+window.addEventListener('resize', () => { resizeCanvas(); drawChart(); });
+resizeCanvas();
+
+function drawChart() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(30,48,56,0.8)';
+  ctx.lineWidth = 1;
+  for (let i=0; i<=4; i++) {
+    const y = H*0.1 + H*0.8*(i/4);
+    ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-10,y); ctx.stroke();
+    ctx.fillStyle = '#4a7a8a'; ctx.font = '10px Share Tech Mono';
+    ctx.fillText((110-i*27.5).toFixed(0), 4, y+4);
+  }
+  const datasets = [
+    { data: history.suhu,       color: '#ff4444' },
+    { data: history.kelembaban, color: '#00aaff' },
+    { data: history.gas,        color: '#ffaa00' },
+    { data: history.jarak,      color: '#00ff88' }
+  ];
+  const allVals = datasets.flatMap(d=>d.data);
+  const minV = Math.min(...allVals) - 5;
+  const maxV = Math.max(...allVals) + 5;
+  const range = maxV - minV || 1;
+  const n = 10;
+  const padL=44, padR=10, padT=H*0.1, padB=H*0.15;
+  const chartW = W-padL-padR, chartH = H-padT-padB;
+  const px = i => padL + (i/(n-1))*chartW;
+  const py = v => padT + chartH - ((v-minV)/range)*chartH;
+  datasets.forEach(ds => {
+    ctx.beginPath(); ctx.strokeStyle = ds.color; ctx.lineWidth = 2;
+    ctx.shadowColor = ds.color; ctx.shadowBlur = 4;
+    ds.data.forEach((v,i) => i===0 ? ctx.moveTo(px(i),py(v)) : ctx.lineTo(px(i),py(v)));
+    ctx.stroke(); ctx.shadowBlur = 0;
+    ds.data.forEach((v,i) => { ctx.beginPath(); ctx.fillStyle = ds.color; ctx.arc(px(i),py(v),3,0,Math.PI*2); ctx.fill(); });
+  });
+  ctx.fillStyle = '#4a7a8a'; ctx.font = '9px Share Tech Mono'; ctx.textAlign = 'center';
+  [0,2,4,6,8,9].forEach(i => ctx.fillText(history.labels[i]||'', px(i), H-4));
+  ctx.textAlign = 'left';
+}
+
+// =====================================================
+//  WEB SERIAL API — baud 115200, parse format Arduino v7
+// =====================================================
+async function connectSerial() {
+  if (!('serial' in navigator)) {
+    alert('Web Serial API tidak didukung!\nGunakan Google Chrome atau Edge terbaru.\nBuka file HTML langsung dari file (bukan VS Code preview).');
+    return;
+  }
+  try {
+    serialPort = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 115200 }); // ← BAUD RATE ARDUINO v7
+
+    isSerialConnected = true;
+    document.getElementById('serialDot').className = 'serial-dot connected';
+    document.getElementById('serialStatus').textContent = 'Arduino terhubung — menerima data...';
+    document.getElementById('connectBtn').textContent = '✖ DISCONNECT';
+    document.getElementById('connectBtn').onclick = disconnectSerial;
+    addLog('>> Arduino terhubung via Serial 115200 baud', 'raw');
+    addLog('>> Menunggu data sensor... (warm-up MQ2 ~60 detik)', 'info');
+
+    const textDecoder = new TextDecoderStream();
+    serialPort.readable.pipeTo(textDecoder.writable);
+    serialReader = textDecoder.readable.getReader();
+    readSerial();
+  } catch (e) {
+    addLog('ERROR: ' + e.message, 'raw');
+    serialPort = null;
+    isSerialConnected = false;
+  }
+}
+
+async function disconnectSerial() {
+  isSerialConnected = false;
+  if (serialReader) { try { await serialReader.cancel(); } catch(e){} serialReader = null; }
+  if (serialPort)   { try { await serialPort.close();   } catch(e){} serialPort = null;   }
+  document.getElementById('serialDot').className = 'serial-dot demo';
+  document.getElementById('serialStatus').textContent = 'Mode Demo — Data simulasi';
+  document.getElementById('connectBtn').textContent = '⚡ CONNECT ARDUINO';
+  document.getElementById('connectBtn').onclick = connectSerial;
+  addLog('>> Koneksi serial diputus', 'info');
+}
+
+async function readSerial() {
+  while (serialPort && serialReader) {
+    try {
+      const { value, done } = await serialReader.read();
+      if (done) break;
+      serialBuffer += value;
+      const lines = serialBuffer.split('\n');
+      serialBuffer = lines.pop();
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed) {
+          addLog(trimmed, trimmed.startsWith('Suhu:') ? 'raw' : 'info');
+          parseSerialLine(trimmed);
+        }
+      });
+    } catch(e) {
+      addLog('Read error: ' + e.message, 'raw');
+      break;
+    }
+  }
+}
+
+// =====================================================
+//  PARSER — format Arduino v7 (115200 baud)
+//  Baris data sensor : "Suhu:28.9C  Hum:55.0%  Gas:307  Jarak:7.1cm"
+//  Baris status      : "Status => Suhu:AMAN Hum:AMAN Gas:AMAN Jarak:BAYA"
+//  Baris keseluruhan : "KESELURUHAN: BAHAYA  -> LED Merah kedip"
+//  Threshold v7 bersifat fixed (tidak dikirim via serial), sudah
+//  diisi langsung di kalibData di atas sesuai #define Arduino.
+// =====================================================
+function parseSerialLine(line) {
+  // ---- Baris data sensor utama ----
+  // Contoh: "Suhu:28.9C  Hum:55.0%  Gas:307  Jarak:7.1cm"
+  if (line.startsWith('Suhu:') && line.includes('Jarak:')) {
+    const suhuM = line.match(/Suhu:([\d.]+)/);
+    const humM  = line.match(/Hum:([\d.]+)/);
+    const gasM  = line.match(/Gas:(\d+)/);
+    const jrkM  = line.match(/Jarak:([\d.]+)/);
+    if (suhuM) sensorData.suhu       = parseFloat(suhuM[1]);
+    if (humM)  sensorData.kelembaban = parseFloat(humM[1]);
+    if (gasM)  sensorData.gas        = parseInt(gasM[1], 10);
+    if (jrkM)  sensorData.jarak      = parseFloat(jrkM[1]);
+    updateUI();
+    return;
+  }
+
+  // Baris "Status => ..." dan "KESELURUHAN: ..." hanya informasional di log;
+  // status badge & LED tetap dihitung ulang dari sensorData supaya selalu konsisten
+  // dengan threshold yang tampil di panel.
+}
+
+// =====================================================
+//  AUTO SIMULASI (hanya jika belum konek Arduino)
+// =====================================================
+setInterval(() => {
+  if (!isSerialConnected) updateFromSimulation();
+}, 2000);
+
+// Tampilkan threshold tetap saat halaman pertama dibuka
+updateKalibUI();
+updateFromSimulation();
+</script>
+</body>
+</html>
