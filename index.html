@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Environment Monitor v7</title>
+<title>Smart Environment Monitor v7 — Cloud Only</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
 
@@ -114,7 +114,6 @@
     background: var(--bg-card);
   }
   .serial-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
-  .serial-dot.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); animation: blink 2s infinite; }
   .serial-dot.demo { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
   .serial-dot.cloud { background: #b388ff; box-shadow: 0 0 6px #b388ff; animation: blink 2s infinite; }
   .connect-btn {
@@ -127,7 +126,6 @@
   .connect-btn.cloud-btn { border-color: #b388ff; color: #b388ff; margin-left: auto; }
   .connect-btn.cloud-btn:hover { background: rgba(179,136,255,0.1); box-shadow: 0 0 8px rgba(179,136,255,0.3); }
 
-  /* Log serial box */
   .serial-log {
     background: #050a0b;
     border: 1px solid var(--border-dim);
@@ -140,7 +138,6 @@
     font-family: var(--font-mono);
     line-height: 1.5;
   }
-  .serial-log .raw { color: #00cc66; }
   .serial-log .info { color: #4a7a8a; }
   .serial-log .cloud { color: #b388ff; }
 
@@ -271,35 +268,31 @@
 </head>
 <body>
 
-<!-- SERIAL / CLOUD STATUS BAR -->
 <div class="serial-indicator">
   <div class="serial-dot demo" id="serialDot"></div>
   <span id="serialStatus">Mode Demo — data simulasi</span>
-  <button class="connect-btn" id="connectBtn" onclick="connectSerial()">⚡ CONNECT USB (SERIAL)</button>
-  <button class="connect-btn cloud-btn" id="cloudBtn" onclick="toggleCloudConfig()">☁ MODE CLOUD (WIFI / THINGSPEAK)</button>
+  <button class="connect-btn cloud-btn" id="cloudBtn" onclick="toggleCloudConfig()">☁ KONFIGURASI LINK CLOUD (THINGSPEAK)</button>
 
   <div class="cloud-config" id="cloudConfig">
     <label>Channel ID:</label>
     <input type="text" id="tsChannelId" placeholder="mis. 123456">
     <label>Read API Key:</label>
-    <input type="text" id="tsReadKey" placeholder="(opsional kalau channel publik)">
+    <input type="text" id="tsReadKey" placeholder="(opsional jika publik)">
     <button class="connect-btn" id="cloudStartBtn" onclick="startCloudMode()">▶ MULAI AMBIL DATA</button>
   </div>
 </div>
 
-<!-- LOG SERIAL -->
 <div class="serial-log" id="serialLog">
-  <span class="info">// Log akan muncul di sini (mode USB atau mode Cloud)...</span>
+  <span class="info">// Log sinkronisasi data awan (Cloud URL Stream) akan muncul di sini...</span>
 </div>
 
-<!-- HEADER -->
 <div class="header">
   <div class="logo-block">
     <div class="logo-box">ENV<br>MON</div>
     <div class="title-block">
       <h1>Smart Home Security and Environment Monitoring System Based on Arduino</h1>
       <div class="subtitle">
-        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Arduino + Wemos D1 Mini</span>
+        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Wemos D1 Mini / Cloud Link</span>
       </div>
     </div>
   </div>
@@ -312,7 +305,6 @@
   </div>
 </div>
 
-<!-- SIM BAR -->
 <div class="sim-bar">
   <span class="sim-label">// SIMULASI KONDISI (hanya aktif saat mode Demo) :</span>
   <div class="sim-btns">
@@ -323,7 +315,6 @@
   <span class="update-note">// update tiap 2 detik</span>
 </div>
 
-<!-- SENSOR CARDS -->
 <div class="sensor-grid">
   <div class="sensor-card" id="cardSuhu">
     <div class="sensor-label"><span>⊕</span> SUHU</div>
@@ -351,7 +342,6 @@
   </div>
 </div>
 
-<!-- BOTTOM PANELS -->
 <div class="bottom-grid">
   <div class="panel">
     <div class="panel-title">LED &amp; BUZZER</div>
@@ -394,15 +384,14 @@
   <div class="panel">
     <div class="panel-title">KALIBRASI</div>
     <div class="kalib-row"><span class="kalib-name">Gas Baseline</span><span class="kalib-val" id="kalibBase">—</span></div>
-    <div class="kalib-row"><span class="kalib-name">Gas WARN</span><span class="kalib-val" id="kalibGW">400</span></div>
-    <div class="kalib-row"><span class="kalib-name">Gas DANGER</span><span class="kalib-val" id="kalibGD">700</span></div>
+    <div class="kalib-row"><span class="kalib-name">Gas WARN</span><span class="kalib-val" id="kalibGW">600</span></div>
+    <div class="kalib-row"><span class="kalib-name">Gas DANGER</span><span class="kalib-val" id="kalibGD">900</span></div>
     <div class="kalib-row"><span class="kalib-name">Jarak Kotak</span><span class="kalib-val" id="kalibJK">—</span></div>
     <div class="kalib-row"><span class="kalib-name">DIST WARN</span><span class="kalib-val" id="kalibDW">40.0 cm</span></div>
     <div class="kalib-row"><span class="kalib-name">DIST DANGER</span><span class="kalib-val" id="kalibDD">10.0 cm</span></div>
   </div>
 </div>
 
-<!-- CHART -->
 <div class="chart-section">
   <div class="chart-header">
     <div class="panel-title" style="margin:0">RIWAYAT SENSOR (10 PEMBACAAN TERAKHIR)</div>
@@ -418,19 +407,12 @@
 
 <script>
 // =====================================================
-//  STATE
+//  STATE & DATA CONFIG
 // =====================================================
 let mode = 'aman';
-let serialPort = null;
-let serialReader = null;
-let serialBuffer = '';
 let startTime = Date.now();
-let isSerialConnected = false;
-
-// Mode cloud
 let isCloudMode = false;
-let cloudPollTimer = null;
-const CLOUD_POLL_MS = 1000; 
+let cloudInterval = null;
 
 let sensorData = { suhu: 24.7, kelembaban: 52, gas: 307, jarak: 36.1 };
 
@@ -452,7 +434,7 @@ const history = {
 };
 
 // =====================================================
-//  UPTIME
+//  MAIN INTERVALS (UPTIME & DEMO LOOP)
 // =====================================================
 setInterval(() => {
   const secs = Math.floor((Date.now() - startTime) / 1000);
@@ -461,8 +443,14 @@ setInterval(() => {
   document.getElementById('uptime').textContent = `${m}:${s}`;
 }, 1000);
 
+setInterval(() => {
+  if (!isCloudMode) {
+    updateFromSimulation();
+  }
+}, 2000);
+
 // =====================================================
-//  LOG
+//  LOG VIEW MANAGEMENT
 // =====================================================
 function addLog(text, type='info') {
   const log = document.getElementById('serialLog');
@@ -475,23 +463,27 @@ function addLog(text, type='info') {
 }
 
 // =====================================================
-//  SIMULASI (mode demo)
+//  SIMULASI DATA DEMO
 // =====================================================
 const modeData = {
   aman:    { suhu:[22,25], kelembaban:[45,60], gas:[200,310], jarak:[45,70] },
-  waspada: { suhu:[30,36], kelembaban:[70,83], gas:[400,680], jarak:[11,39] },
-  bahaya:  { suhu:[38,45], kelembaban:[85,95], gas:[700,900], jarak:[1,10] }
+  waspada: { suhu:[30,36], kelembaban:[70,83], gas:[610,680], jarak:[11,39] },
+  bahaya:  { suhu:[38,45], kelembaban:[85,95], gas:[910,980], jarak:[1,10] }
 };
 
 function rnd(min, max) { return +(min + Math.random()*(max-min)).toFixed(1); }
 
 function setMode(m) {
+  if (isCloudMode) {
+    alert("Tombol simulasi mati saat tautan cloud sedang berjalanaktif.");
+    return;
+  }
   mode = m;
   ['aman','waspada','bahaya'].forEach(k => {
     document.getElementById('btn'+k.charAt(0).toUpperCase()+k.slice(1)).classList.remove('active');
   });
   document.getElementById('btn'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
-  if (!isSerialConnected && !isCloudMode) updateFromSimulation();
+  updateFromSimulation();
 }
 
 function updateFromSimulation() {
@@ -504,21 +496,17 @@ function updateFromSimulation() {
 }
 
 // =====================================================
-//  STATUS LOGIC
+//  AMBANG BATAS & EVALUASI STATUS
 // =====================================================
 function getStatus(key, val) {
   if (key === 'suhu')       return val >= 38 ? 'danger' : val >= 30 ? 'warn' : 'safe';
   if (key === 'kelembaban') return val >= 85 ? 'danger' : val >= 70 ? 'warn' : 'safe';
   if (key === 'gas') {
-    const gw = kalibData.gasWarn   ?? 600;
-    const gd = kalibData.gasDanger ?? 900;
-    return val >= gd ? 'danger' : val >= gw ? 'warn' : 'safe';
+    return val >= kalibData.gasDanger ? 'danger' : val >= kalibData.gasWarn ? 'warn' : 'safe';
   }
   if (key === 'jarak') {
-    if (val >= 999) return 'safe';
-    const dw = kalibData.distWarn   ?? 40;
-    const dd = kalibData.distDanger ?? 10;
-    return val <= dd ? 'danger' : val <= dw ? 'warn' : 'safe';
+    if (val >= 999 || val < 0) return 'safe';
+    return val <= kalibData.distDanger ? 'danger' : val <= kalibData.distWarn ? 'warn' : 'safe';
   }
   return 'safe';
 }
@@ -548,7 +536,7 @@ function updateUI() {
   document.getElementById('valSuhu').textContent      = suhu.toFixed(1);
   document.getElementById('valKelembaban').textContent = Math.round(kelembaban);
   document.getElementById('valGas').textContent       = gas;
-  document.getElementById('valJarak').textContent     = (jarak >= 999) ? '--.-' : jarak.toFixed(1);
+  document.getElementById('valJarak').textContent     = (jarak >= 999 || jarak < 0) ? '--.-' : jarak.toFixed(1);
 
   applyCardStatus('cardSuhu',       'statusSuhu',       'barSuhu',       suhu,       suhu,       50,   'suhu');
   applyCardStatus('cardKelembaban', 'statusKelembaban', 'barKelembaban', kelembaban, kelembaban, 100,  'kelembaban');
@@ -597,18 +585,8 @@ function updateUI() {
   drawChart();
 }
 
-function updateKalibUI() {
-  const k = kalibData;
-  if (k.gasBaseline !== null) document.getElementById('kalibBase').textContent = k.gasBaseline;
-  if (k.gasWarn     !== null) { document.getElementById('kalibGW').textContent = k.gasWarn; document.getElementById('thGasW').textContent = `≥${k.gasWarn} WSP`; }
-  if (k.gasDanger   !== null) { document.getElementById('kalibGD').textContent = k.gasDanger; document.getElementById('thGasB').textContent = `≥${k.gasDanger} BHY`; }
-  if (k.jarakKotak  !== null) { document.getElementById('kalibJK').textContent = k.jarakKotak.toFixed(1)+' cm'; }
-  if (k.distWarn    !== null) { document.getElementById('kalibDW').textContent = k.distWarn.toFixed(1)+' cm'; document.getElementById('thJrkW').textContent = `≤${k.distWarn.toFixed(0)}cm WSP`; }
-  if (k.distDanger  !== null) { document.getElementById('kalibDD').textContent = k.distDanger.toFixed(1)+' cm'; document.getElementById('thJrkB').textContent = `≤${k.distDanger.toFixed(0)}cm BHY`; }
-}
-
 // =====================================================
-//  CHART
+//  RENDERING GRAFIK (CANVAS)
 // =====================================================
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -625,7 +603,7 @@ function drawChart() {
     const y = H*0.1 + H*0.8*(i/4);
     ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-10,y); ctx.stroke();
     ctx.fillStyle = '#4a7a8a'; ctx.font = '10px Share Tech Mono';
-    ctx.fillText((110-i*27.5).toFixed(0), 4, y+4);
+    ctx.fillText((100-i*25).toFixed(0), 4, y+4);
   }
   const datasets = [
     { data: history.suhu,       color: '#ff4444' },
@@ -633,21 +611,17 @@ function drawChart() {
     { data: history.gas,        color: '#ffaa00' },
     { data: history.jarak,      color: '#00ff88' }
   ];
-  const allVals = datasets.flatMap(d=>d.data);
-  const minV = Math.min(...allVals) - 5;
-  const maxV = Math.max(...allVals) + 5;
-  const range = maxV - minV || 1;
   const n = 10;
   const padL=44, padR=10, padT=H*0.1, padB=H*0.15;
   const chartW = W-padL-padR, chartH = H-padT-padB;
   const px = i => padL + (i/(n-1))*chartW;
-  const py = v => padT + chartH - ((v-minV)/range)*chartH;
+  const py = v => padT + chartH - (Math.min(100, Math.max(0, v))/100)*chartH;
+
   datasets.forEach(ds => {
     ctx.beginPath(); ctx.strokeStyle = ds.color; ctx.lineWidth = 2;
-    ctx.shadowColor = ds.color; ctx.shadowBlur = 4;
     ds.data.forEach((v,i) => i===0 ? ctx.moveTo(px(i),py(v)) : ctx.lineTo(px(i),py(v)));
-    ctx.stroke(); ctx.shadowBlur = 0;
-    ds.data.forEach((v,i) => { ctx.beginPath(); ctx.fillStyle = ds.color; ctx.arc(px(i),py(v),3,0,Math.PI*2); ctx.fill(); });
+    ctx.stroke();
+    ds.data.forEach((v,i) => { ctx.beginPath(); ctx.fillStyle = ds.color; ctx.arc(px(i),py(v),2.5,0,Math.PI*2); ctx.fill(); });
   });
   ctx.fillStyle = '#4a7a8a'; ctx.font = '9px Share Tech Mono'; ctx.textAlign = 'center';
   [0,2,4,6,8,9].forEach(i => ctx.fillText(history.labels[i]||'', px(i), H-4));
@@ -655,155 +629,62 @@ function drawChart() {
 }
 
 // =====================================================
-//  WEB SERIAL API (mode USB langsung, tetap tersedia sebagai opsi cadangan)
-// =====================================================
-async function connectSerial() {
-  if (isCloudMode) { addLog('Matikan mode Cloud dulu sebelum pakai USB.', 'info'); return; }
-  if (!('serial' in navigator)) {
-    alert('Web Serial API tidak didukung!\nGunakan Google Chrome atau Edge terbaru.');
-    return;
-  }
-  try {
-    serialPort = await navigator.serial.requestPort();
-    await serialPort.open({ baudRate: 115200 });
-
-    isSerialConnected = true;
-    document.getElementById('serialDot').className = 'serial-dot connected';
-    document.getElementById('serialStatus').textContent = 'Arduino terhubung via USB — menerima data...';
-    document.getElementById('connectBtn').textContent = '✖ DISCONNECT';
-    document.getElementById('connectBtn').onclick = disconnectSerial;
-    addLog('>> Terhubung via USB Serial 115200 baud', 'raw');
-
-    const textDecoder = new TextDecoderStream();
-    serialPort.readable.pipeTo(textDecoder.writable);
-    serialReader = textDecoder.readable.getReader();
-    readSerial();
-  } catch (e) {
-    addLog('ERROR: ' + e.message, 'raw');
-    serialPort = null;
-    isSerialConnected = false;
-  }
-}
-
-async function disconnectSerial() {
-  isSerialConnected = false;
-  if (serialReader) { try { await serialReader.cancel(); } catch(e){} serialReader = null; }
-  if (serialPort)   { try { await serialPort.close();   } catch(e){} serialPort = null;   }
-  document.getElementById('serialDot').className = 'serial-dot demo';
-  document.getElementById('serialStatus').textContent = 'Mode Demo — data simulasi';
-  document.getElementById('connectBtn').textContent = '⚡ CONNECT USB (SERIAL)';
-  document.getElementById('connectBtn').onclick = connectSerial;
-  addLog('>> Koneksi USB diputus', 'info');
-}
-
-async function readSerial() {
-  while (serialPort && serialReader) {
-    try {
-      const { value, done } = await serialReader.read();
-      if (done) break;
-      serialBuffer += value;
-      const lines = serialBuffer.split('\n');
-      serialBuffer = lines.pop();
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed) {
-          addLog(trimmed, trimmed.startsWith('Suhu:') ? 'raw' : 'info');
-          parseSerialLine(trimmed);
-        }
-      });
-    } catch(e) {
-      addLog('Read error: ' + e.message, 'raw');
-      break;
-    }
-  }
-}
-
-function parseSerialLine(line) {
-  if (line.startsWith('Suhu:') && line.includes('Jarak:')) {
-    const suhuM = line.match(/Suhu:([\d.]+)/);
-    const humM  = line.match(/Hum:([\d.]+)/);
-    const gasM  = line.match(/Gas:(\d+)/);
-    const jrkM  = line.match(/Jarak:([\d.]+)/);
-    if (suhuM) sensorData.suhu       = parseFloat(suhuM[1]);
-    if (humM)  sensorData.kelembaban = parseFloat(humM[1]);
-    if (gasM)  sensorData.gas        = parseInt(gasM[1], 10);
-    if (jrkM)  sensorData.jarak      = parseFloat(jrkM[1]);
-    updateUI();
-  }
-}
-
-// =====================================================
-//  MODE CLOUD — ambil data dari ThingSpeak via WiFi (tanpa kabel USB)
+//  LINK STREAM MANAGEMENT (THINGSPEAK INTERNET CLOUD)
 // =====================================================
 function toggleCloudConfig() {
-  if (isCloudMode) { stopCloudMode(); return; }
   document.getElementById('cloudConfig').classList.toggle('open');
 }
 
 function startCloudMode() {
-  if (isSerialConnected) { addLog('Putuskan koneksi USB dulu sebelum pakai Cloud.', 'info'); return; }
+  const chId = document.getElementById('tsChannelId').value.trim();
+  const apiKey = document.getElementById('tsReadKey').value.trim();
+  
+  if(!chId) { alert("Masukkan Channel ID ThingSpeak terlebih dahulu!"); return; }
 
-  const channelId = document.getElementById('tsChannelId').value.trim();
-  const readKey   = document.getElementById('tsReadKey').value.trim();
-  if (!channelId) { alert('Isi Channel ID ThingSpeak dulu.'); return; }
+  if(isCloudMode) {
+    clearInterval(cloudInterval);
+    isCloudMode = false;
+    document.getElementById('serialDot').className = 'serial-dot demo';
+    document.getElementById('serialStatus').textContent = 'Mode Demo — data simulasi';
+    document.getElementById('cloudStartBtn').textContent = '▶ MULAI AMBIL DATA';
+    addLog('>> Sinkronisasi Cloud Link dinonaktifkan.', 'info');
+    return;
+  }
 
   isCloudMode = true;
-  window._tsChannelId = channelId;
-  window._tsReadKey = readKey;
-
   document.getElementById('serialDot').className = 'serial-dot cloud';
-  document.getElementById('serialStatus').textContent = 'Mode Cloud — mengambil data dari ThingSpeak...';
-  document.getElementById('cloudBtn').textContent = '✖ MATIKAN MODE CLOUD';
-  addLog('>> Mode Cloud aktif, polling ThingSpeak tiap ' + (CLOUD_POLL_MS/1000) + ' detik', 'cloud');
+  document.getElementById('serialStatus').textContent = `Menerima Data via Cloud Link Channel: ${chId}`;
+  document.getElementById('cloudStartBtn').textContent = '✖ MATIKAN MODE CLOUD';
+  addLog(`>> Menghubungkan ke API cloud ThingSpeak Channel ID: ${chId}`, 'cloud');
 
-  fetchCloudData();
-  cloudPollTimer = setInterval(fetchCloudData, CLOUD_POLL_MS);
+  // Request langsung saat diklik, lalu ulangi per 15 detik (Standard ThingSpeak limit)
+  fetchCloudData(chId, apiKey);
+  cloudInterval = setInterval(() => fetchCloudData(chId, apiKey), 15000);
 }
 
-function stopCloudMode() {
-  isCloudMode = false;
-  if (cloudPollTimer) { clearInterval(cloudPollTimer); cloudPollTimer = null; }
-  document.getElementById('serialDot').className = 'serial-dot demo';
-  document.getElementById('serialStatus').textContent = 'Mode Demo — data simulasi';
-  document.getElementById('cloudBtn').textContent = '☁ MODE CLOUD (WIFI / THINGSPEAK)';
-  document.getElementById('cloudConfig').classList.remove('open');
-  addLog('>> Mode Cloud dimatikan', 'info');
+function fetchCloudData(chId, apiKey) {
+  let url = `https://api.thingspeak.com/channels/${chId}/feeds/last.json`;
+  if(apiKey) url += `?api_key=${apiKey}`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      if(data) {
+        // Alokasi Map Field ThingSpeak: field1=Suhu, field2=Hum, field3=Gas, field4=Jarak
+        sensorData.suhu = data.field1 ? parseFloat(data.field1) : sensorData.suhu;
+        sensorData.kelembaban = data.field2 ? parseFloat(data.field2) : sensorData.kelembaban;
+        sensorData.gas = data.field3 ? parseInt(data.field3) : sensorData.gas;
+        sensorData.jarak = data.field4 ? parseFloat(data.field4) : sensorData.jarak;
+        
+        const timestamp = new Date(data.created_at).toLocaleTimeString();
+        addLog(`[Fetch OK] Suhu:${sensorData.suhu}°C | Hum:${sensorData.kelembaban}% | Gas:${sensorData.gas} | Jarak:${sensorData.jarak}cm (${timestamp})`, 'cloud');
+        updateUI();
+      }
+    })
+    .catch(err => {
+      addLog(`[Fetch Error] Gagal meraih endpoint data: ${err.message}`, 'raw');
+    });
 }
-
-async function fetchCloudData() {
-  const channelId = window._tsChannelId;
-  const readKey = window._tsReadKey;
-  let url = `https://api.thingspeak.com/channels/${channelId}/feeds.json?results=1`;
-  if (readKey) url += `&api_key=${readKey}`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const feed = data.feeds && data.feeds[0];
-    if (!feed) { addLog('Belum ada data di channel ini.', 'cloud'); return; }
-
-    sensorData.suhu       = parseFloat(feed.field1) || sensorData.suhu;
-    sensorData.kelembaban = parseFloat(feed.field2) || sensorData.kelembaban;
-    sensorData.gas        = parseInt(feed.field3)   || sensorData.gas;
-    sensorData.jarak      = parseFloat(feed.field4) || sensorData.jarak;
-
-    addLog(`[Cloud] Suhu:${sensorData.suhu} Hum:${sensorData.kelembaban} Gas:${sensorData.gas} Jarak:${sensorData.jarak} (${feed.created_at})`, 'cloud');
-    updateUI();
-  } catch (e) {
-    addLog('Cloud fetch error: ' + e.message, 'cloud');
-  }
-}
-
-// =====================================================
-//  AUTO SIMULASI (hanya jika belum konek USB atau Cloud)
-// =====================================================
-setInterval(() => {
-  if (!isSerialConnected && !isCloudMode) updateFromSimulation();
-}, 2000);
-
-updateKalibUI();
-updateFromSimulation();
 </script>
 </body>
 </html>
