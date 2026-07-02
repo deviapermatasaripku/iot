@@ -105,10 +105,11 @@
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); animation: blink 1.5s infinite; }
   @keyframes blink { 50% { opacity: 0.4; } }
 
+  /* BAR UTAMA CLOUD */
   .serial-indicator {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     font-size: 11px; color: var(--text-dim);
-    padding: 6px 12px;
+    padding: 8px 14px;
     border: 1px solid var(--border-dim);
     margin-bottom: 8px;
     background: var(--bg-card);
@@ -116,9 +117,10 @@
   .serial-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
   .serial-dot.demo { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
   .serial-dot.cloud { background: #b388ff; box-shadow: 0 0 6px #b388ff; animation: blink 2s infinite; }
+  
   .connect-btn {
     border: 1px solid var(--accent-cyan); color: var(--accent-cyan);
-    background: transparent; padding: 4px 14px;
+    background: transparent; padding: 5px 14px;
     font-family: var(--font-mono); font-size: 11px;
     cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
   }
@@ -249,9 +251,9 @@
     align-items: center;
     flex-wrap: wrap;
     width: 100%;
-    padding-top: 6px;
+    padding-top: 8px;
     border-top: 1px dashed var(--border-dim);
-    margin-top: 6px;
+    margin-top: 8px;
   }
   .cloud-config.open { display: flex; }
   .cloud-config input {
@@ -270,20 +272,20 @@
 
 <div class="serial-indicator">
   <div class="serial-dot demo" id="serialDot"></div>
-  <span id="serialStatus">Mode Demo — data simulasi</span>
-  <button class="connect-btn cloud-btn" id="cloudBtn" onclick="toggleCloudConfig()">☁ KONFIGURASI LINK CLOUD (THINGSPEAK)</button>
+  <span id="serialStatus">Mode Demo — menggunakan simulasi offline</span>
+  <button class="connect-btn cloud-btn" id="cloudBtn" onclick="toggleCloudConfig()">☁ KONFIGURASI LINK THINGSPEAK (WIFI)</button>
 
   <div class="cloud-config" id="cloudConfig">
     <label>Channel ID:</label>
-    <input type="text" id="tsChannelId" placeholder="mis. 123456">
+    <input type="text" id="tsChannelId" placeholder="mis. 3420010">
     <label>Read API Key:</label>
-    <input type="text" id="tsReadKey" placeholder="(opsional jika publik)">
+    <input type="text" id="tsReadKey" placeholder="(Isi jika channel private)">
     <button class="connect-btn" id="cloudStartBtn" onclick="startCloudMode()">▶ MULAI AMBIL DATA</button>
   </div>
 </div>
 
 <div class="serial-log" id="serialLog">
-  <span class="info">// Log sinkronisasi data awan (Cloud URL Stream) akan muncul di sini...</span>
+  <span class="info">// Log aktivitas stream cloud link akan ditampilkan di sini...</span>
 </div>
 
 <div class="header">
@@ -292,7 +294,7 @@
     <div class="title-block">
       <h1>Smart Home Security and Environment Monitoring System Based on Arduino</h1>
       <div class="subtitle">
-        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Wemos D1 Mini / Cloud Link</span>
+        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Wemos D1 Mini / Cloud Link Only</span>
       </div>
     </div>
   </div>
@@ -306,7 +308,7 @@
 </div>
 
 <div class="sim-bar">
-  <span class="sim-label">// SIMULASI KONDISI (hanya aktif saat mode Demo) :</span>
+  <span class="sim-label">// SIMULASI KONDISI (hanya berfungsi pada Mode Demo) :</span>
   <div class="sim-btns">
     <button class="sim-btn aman active" id="btnAman" onclick="setMode('aman')">AMAN</button>
     <button class="sim-btn waspada" id="btnWaspada" onclick="setMode('waspada')">WASPADA</button>
@@ -434,7 +436,7 @@ const history = {
 };
 
 // =====================================================
-//  MAIN INTERVALS (UPTIME & DEMO LOOP)
+//  MAIN INTERVALS
 // =====================================================
 setInterval(() => {
   const secs = Math.floor((Date.now() - startTime) / 1000);
@@ -475,7 +477,7 @@ function rnd(min, max) { return +(min + Math.random()*(max-min)).toFixed(1); }
 
 function setMode(m) {
   if (isCloudMode) {
-    alert("Tombol simulasi mati saat tautan cloud sedang berjalanaktif.");
+    alert("Tombol simulasi terkunci saat tautan internet cloud sedang berjalan aktif.");
     return;
   }
   mode = m;
@@ -496,7 +498,7 @@ function updateFromSimulation() {
 }
 
 // =====================================================
-//  AMBANG BATAS & EVALUASI STATUS
+//  EVALUASI STATUS & AMBANG BATAS
 // =====================================================
 function getStatus(key, val) {
   if (key === 'suhu')       return val >= 38 ? 'danger' : val >= 30 ? 'warn' : 'safe';
@@ -586,7 +588,7 @@ function updateUI() {
 }
 
 // =====================================================
-//  RENDERING GRAFIK (CANVAS)
+//  RENDERING CANVAS CHART
 // =====================================================
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -629,7 +631,7 @@ function drawChart() {
 }
 
 // =====================================================
-//  LINK STREAM MANAGEMENT (THINGSPEAK INTERNET CLOUD)
+//  LINK STREAM MANAGEMENT (THINGSPEAK CLOUD FETCH)
 // =====================================================
 function toggleCloudConfig() {
   document.getElementById('cloudConfig').classList.toggle('open');
@@ -645,19 +647,18 @@ function startCloudMode() {
     clearInterval(cloudInterval);
     isCloudMode = false;
     document.getElementById('serialDot').className = 'serial-dot demo';
-    document.getElementById('serialStatus').textContent = 'Mode Demo — data simulasi';
+    document.getElementById('serialStatus').textContent = 'Mode Demo — menggunakan simulasi offline';
     document.getElementById('cloudStartBtn').textContent = '▶ MULAI AMBIL DATA';
-    addLog('>> Sinkronisasi Cloud Link dinonaktifkan.', 'info');
+    addLog('>> Sinkronisasi Cloud Link dinonaktifkan kembali ke mode demo.', 'info');
     return;
   }
 
   isCloudMode = true;
   document.getElementById('serialDot').className = 'serial-dot cloud';
-  document.getElementById('serialStatus').textContent = `Menerima Data via Cloud Link Channel: ${chId}`;
+  document.getElementById('serialStatus').textContent = `Menerima Data via Internet Cloud ID Channel: ${chId}`;
   document.getElementById('cloudStartBtn').textContent = '✖ MATIKAN MODE CLOUD';
-  addLog(`>> Menghubungkan ke API cloud ThingSpeak Channel ID: ${chId}`, 'cloud');
+  addLog(`>> Berhasil mengalihkan sistem ke ThingSpeak Channel ID: ${chId}`, 'cloud');
 
-  // Request langsung saat diklik, lalu ulangi per 15 detik (Standard ThingSpeak limit)
   fetchCloudData(chId, apiKey);
   cloudInterval = setInterval(() => fetchCloudData(chId, apiKey), 15000);
 }
@@ -670,19 +671,18 @@ function fetchCloudData(chId, apiKey) {
     .then(res => res.json())
     .then(data => {
       if(data) {
-        // Alokasi Map Field ThingSpeak: field1=Suhu, field2=Hum, field3=Gas, field4=Jarak
         sensorData.suhu = data.field1 ? parseFloat(data.field1) : sensorData.suhu;
         sensorData.kelembaban = data.field2 ? parseFloat(data.field2) : sensorData.kelembaban;
         sensorData.gas = data.field3 ? parseInt(data.field3) : sensorData.gas;
         sensorData.jarak = data.field4 ? parseFloat(data.field4) : sensorData.jarak;
         
         const timestamp = new Date(data.created_at).toLocaleTimeString();
-        addLog(`[Fetch OK] Suhu:${sensorData.suhu}°C | Hum:${sensorData.kelembaban}% | Gas:${sensorData.gas} | Jarak:${sensorData.jarak}cm (${timestamp})`, 'cloud');
+        addLog(`[Fetch Sukses] Suhu:${sensorData.suhu}°C | Hum:${sensorData.kelembaban}% | Gas:${sensorData.gas} | Jarak:${sensorData.jarak}cm (${timestamp})`, 'cloud');
         updateUI();
       }
     })
     .catch(err => {
-      addLog(`[Fetch Error] Gagal meraih endpoint data: ${err.message}`, 'raw');
+      addLog(`[Fetch Gagal] Kesalahan mengambil data: ${err.message}`, 'raw');
     });
 }
 </script>
