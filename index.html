@@ -382,7 +382,7 @@
       </div>
       <div class="threshold-row">
         <span class="threshold-name">Gas MQ2</span>
-        <div class="threshold-vals"><span class="wsp" id="thGasW">≥400 WSP</span><span class="bhy" id="thGasB">≥700 BHY</span></div>
+        <div class="threshold-vals"><span class="wsp" id="thGasW">≥600 WSP</span><span class="bhy" id="thGasB">≥900 BHY</span></div>
       </div>
       <div class="threshold-row">
         <span class="threshold-name">Jarak</span>
@@ -436,8 +436,8 @@ let sensorData = { suhu: 24.7, kelembaban: 52, gas: 307, jarak: 36.1 };
 
 let kalibData = {
   gasBaseline: null,
-  gasWarn: 400,
-  gasDanger: 700,
+  gasWarn: 600,
+  gasDanger: 900,
   jarakKotak: null,
   distWarn: 40.0,
   distDanger: 10.0
@@ -510,8 +510,8 @@ function getStatus(key, val) {
   if (key === 'suhu')       return val >= 38 ? 'danger' : val >= 30 ? 'warn' : 'safe';
   if (key === 'kelembaban') return val >= 85 ? 'danger' : val >= 70 ? 'warn' : 'safe';
   if (key === 'gas') {
-    const gw = kalibData.gasWarn   ?? 400;
-    const gd = kalibData.gasDanger ?? 700;
+    const gw = kalibData.gasWarn   ?? 600;
+    const gd = kalibData.gasDanger ?? 900;
     return val >= gd ? 'danger' : val >= gw ? 'warn' : 'safe';
   }
   if (key === 'jarak') {
