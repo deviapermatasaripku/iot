@@ -106,7 +106,7 @@
   @keyframes blink { 50% { opacity: 0.4; } }
 
   .serial-indicator {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     font-size: 11px; color: var(--text-dim);
     padding: 6px 12px;
     border: 1px solid var(--border-dim);
@@ -116,14 +116,16 @@
   .serial-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
   .serial-dot.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); animation: blink 2s infinite; }
   .serial-dot.demo { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+  .serial-dot.cloud { background: #b388ff; box-shadow: 0 0 6px #b388ff; animation: blink 2s infinite; }
   .connect-btn {
-    margin-left: auto;
     border: 1px solid var(--accent-cyan); color: var(--accent-cyan);
     background: transparent; padding: 4px 14px;
     font-family: var(--font-mono); font-size: 11px;
     cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
   }
   .connect-btn:hover { background: rgba(0,200,255,0.1); box-shadow: 0 0 8px rgba(0,200,255,0.3); }
+  .connect-btn.cloud-btn { border-color: #b388ff; color: #b388ff; margin-left: auto; }
+  .connect-btn.cloud-btn:hover { background: rgba(179,136,255,0.1); box-shadow: 0 0 8px rgba(179,136,255,0.3); }
 
   /* Log serial box */
   .serial-log {
@@ -140,6 +142,7 @@
   }
   .serial-log .raw { color: #00cc66; }
   .serial-log .info { color: #4a7a8a; }
+  .serial-log .cloud { color: #b388ff; }
 
   .sim-bar {
     background: var(--bg-card); border: 1px solid var(--border-dim);
@@ -243,6 +246,23 @@
   .chart-wrap { position: relative; height: 160px; }
   canvas#chart { width: 100% !important; height: 160px !important; }
 
+  .cloud-config {
+    display: none;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-dim);
+    margin-top: 6px;
+  }
+  .cloud-config.open { display: flex; }
+  .cloud-config input {
+    background: #050a0b; border: 1px solid var(--border-dim); color: var(--text-main);
+    font-family: var(--font-mono); font-size: 11px; padding: 5px 8px; width: 160px;
+  }
+  .cloud-config label { font-size: 10px; color: var(--text-dim); }
+
   @media (max-width: 900px) {
     .sensor-grid { grid-template-columns: repeat(2,1fr); }
     .bottom-grid { grid-template-columns: 1fr; }
@@ -251,16 +271,25 @@
 </head>
 <body>
 
-<!-- SERIAL STATUS BAR -->
+<!-- SERIAL / CLOUD STATUS BAR -->
 <div class="serial-indicator">
   <div class="serial-dot demo" id="serialDot"></div>
-  <span id="serialStatus">Mode Demo — Klik CONNECT untuk hubungkan Arduino</span>
-  <button class="connect-btn" id="connectBtn" onclick="connectSerial()">⚡ CONNECT ARDUINO</button>
+  <span id="serialStatus">Mode Demo — data simulasi</span>
+  <button class="connect-btn" id="connectBtn" onclick="connectSerial()">⚡ CONNECT USB (SERIAL)</button>
+  <button class="connect-btn cloud-btn" id="cloudBtn" onclick="toggleCloudConfig()">☁ MODE CLOUD (WIFI / THINGSPEAK)</button>
+
+  <div class="cloud-config" id="cloudConfig">
+    <label>Channel ID:</label>
+    <input type="text" id="tsChannelId" placeholder="mis. 123456">
+    <label>Read API Key:</label>
+    <input type="text" id="tsReadKey" placeholder="(opsional kalau channel publik)">
+    <button class="connect-btn" id="cloudStartBtn" onclick="startCloudMode()">▶ MULAI AMBIL DATA</button>
+  </div>
 </div>
 
 <!-- LOG SERIAL -->
 <div class="serial-log" id="serialLog">
-  <span class="info">// Log serial akan muncul di sini saat Arduino terhubung...</span>
+  <span class="info">// Log akan muncul di sini (mode USB atau mode Cloud)...</span>
 </div>
 
 <!-- HEADER -->
@@ -270,7 +299,7 @@
     <div class="title-block">
       <h1>Smart Home Security and Environment Monitoring System Based on Arduino</h1>
       <div class="subtitle">
-        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Arduino</span>
+        v7 · <span>DHT11</span> · <span>MQ2</span> · <span>Ultrasonik</span> · <span>LCD I2C 16x2</span> · <span>Arduino + Wemos D1 Mini</span>
       </div>
     </div>
   </div>
@@ -285,7 +314,7 @@
 
 <!-- SIM BAR -->
 <div class="sim-bar">
-  <span class="sim-label">// SIMULASI KONDISI :</span>
+  <span class="sim-label">// SIMULASI KONDISI (hanya aktif saat mode Demo) :</span>
   <div class="sim-btns">
     <button class="sim-btn aman active" id="btnAman" onclick="setMode('aman')">AMAN</button>
     <button class="sim-btn waspada" id="btnWaspada" onclick="setMode('waspada')">WASPADA</button>
@@ -398,17 +427,20 @@ let serialBuffer = '';
 let startTime = Date.now();
 let isSerialConnected = false;
 
+// Mode cloud
+let isCloudMode = false;
+let cloudPollTimer = null;
+const CLOUD_POLL_MS = 6000; // dipercepat supaya kejadian singkat (bahaya sesaat) tidak kelewat
+
 let sensorData = { suhu: 24.7, kelembaban: 52, gas: 307, jarak: 36.1 };
 
-// Threshold tetap (HARUS SAMA dengan #define di kode Arduino v7)
-// Tidak lagi dikirim via serial pada v7, jadi kita set langsung di sini.
 let kalibData = {
   gasBaseline: null,
-  gasWarn: 400,      // GAS_WARN
-  gasDanger: 700,    // GAS_DANGER
+  gasWarn: 400,
+  gasDanger: 700,
   jarakKotak: null,
-  distWarn: 40.0,    // DIST_WARN
-  distDanger: 10.0   // DIST_DANGER
+  distWarn: 40.0,
+  distDanger: 10.0
 };
 
 const history = {
@@ -430,7 +462,7 @@ setInterval(() => {
 }, 1000);
 
 // =====================================================
-//  LOG SERIAL
+//  LOG
 // =====================================================
 function addLog(text, type='info') {
   const log = document.getElementById('serialLog');
@@ -438,13 +470,12 @@ function addLog(text, type='info') {
   span.className = type;
   span.textContent = text;
   log.appendChild(span);
-  // Batasi 50 baris
   while (log.children.length > 50) log.removeChild(log.firstChild);
   log.scrollTop = log.scrollHeight;
 }
 
 // =====================================================
-//  SIMULASI
+//  SIMULASI (mode demo)
 // =====================================================
 const modeData = {
   aman:    { suhu:[22,25], kelembaban:[45,60], gas:[200,310], jarak:[45,70] },
@@ -460,7 +491,7 @@ function setMode(m) {
     document.getElementById('btn'+k.charAt(0).toUpperCase()+k.slice(1)).classList.remove('active');
   });
   document.getElementById('btn'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
-  if (!isSerialConnected) updateFromSimulation();
+  if (!isSerialConnected && !isCloudMode) updateFromSimulation();
 }
 
 function updateFromSimulation() {
@@ -473,8 +504,7 @@ function updateFromSimulation() {
 }
 
 // =====================================================
-//  STATUS LOGIC — menyesuaikan threshold Arduino v7
-//  (DIST_WARN 40, DIST_DANGER 10, GAS_WARN 400, GAS_DANGER 700)
+//  STATUS LOGIC
 // =====================================================
 function getStatus(key, val) {
   if (key === 'suhu')       return val >= 38 ? 'danger' : val >= 30 ? 'warn' : 'safe';
@@ -485,7 +515,6 @@ function getStatus(key, val) {
     return val >= gd ? 'danger' : val >= gw ? 'warn' : 'safe';
   }
   if (key === 'jarak') {
-    // d >= 999 artinya tidak ada objek terdeteksi -> AMAN (sesuai kode Arduino)
     if (val >= 999) return 'safe';
     const dw = kalibData.distWarn   ?? 40;
     const dd = kalibData.distDanger ?? 10;
@@ -501,10 +530,6 @@ function overallStatus() {
   return 'safe';
 }
 
-// rawVal = nilai ASLI sensor, dipakai untuk menentukan status AMAN/WASPADA/BAHAYA.
-// barVal = nilai yang sudah diolah khusus untuk lebar progress bar (boleh beda dari rawVal,
-//          misalnya untuk jarak yang divisualkan terbalik: makin dekat -> bar makin penuh).
-// Status TIDAK BOLEH dihitung dari barVal, karena akan salah (ini bug yang kemarin terjadi).
 function applyCardStatus(cardId, statusId, barId, rawVal, barVal, max, key) {
   const st = getStatus(key, rawVal);
   document.getElementById(cardId).className  = 'sensor-card' + (st==='danger'?' danger': st==='warn'?' warn':'');
@@ -528,8 +553,6 @@ function updateUI() {
   applyCardStatus('cardSuhu',       'statusSuhu',       'barSuhu',       suhu,       suhu,       50,   'suhu');
   applyCardStatus('cardKelembaban', 'statusKelembaban', 'barKelembaban', kelembaban, kelembaban, 100,  'kelembaban');
   applyCardStatus('cardGas',        'statusGas',        'barGas',        gas,        gas,        1000, 'gas');
-  // Status jarak dihitung dari nilai ASLI (jarak), bar pakai nilai olahan (100-jarak) hanya untuk visual.
-  // jarak>=999 berarti tidak ada objek terdeteksi -> rawVal tetap 999 (AMAN), bar dikosongkan (0).
   applyCardStatus('cardJarak',      'statusJarak',      'barJarak',      jarak,      (jarak>=999?0:100-jarak), 100, 'jarak');
 
   const ov = overallStatus();
@@ -540,7 +563,6 @@ function updateUI() {
   dot.style.background = ov==='danger' ? '#ff3333' : ov==='warn' ? '#ffaa00' : '#00ff88';
   dot.style.boxShadow  = ov==='danger' ? '0 0 8px #ff3333' : ov==='warn' ? '0 0 8px #ffaa00' : '0 0 8px #00ff88';
 
-  // LED
   const ledH = document.getElementById('ledHijau');
   const ledK = document.getElementById('ledKuning');
   const ledM = document.getElementById('ledMerah');
@@ -565,7 +587,6 @@ function updateUI() {
     info.innerHTML = '<span class="danger">LED MERAH KEDIP CEPAT!</span><br><span class="danger">BUZZER ALARM!</span>';
   }
 
-  // Chart history
   const now = new Date();
   const label = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
   history.labels.push(label); history.labels.shift();
@@ -634,24 +655,24 @@ function drawChart() {
 }
 
 // =====================================================
-//  WEB SERIAL API — baud 115200, parse format Arduino v7
+//  WEB SERIAL API (mode USB langsung, tetap tersedia sebagai opsi cadangan)
 // =====================================================
 async function connectSerial() {
+  if (isCloudMode) { addLog('Matikan mode Cloud dulu sebelum pakai USB.', 'info'); return; }
   if (!('serial' in navigator)) {
-    alert('Web Serial API tidak didukung!\nGunakan Google Chrome atau Edge terbaru.\nBuka file HTML langsung dari file (bukan VS Code preview).');
+    alert('Web Serial API tidak didukung!\nGunakan Google Chrome atau Edge terbaru.');
     return;
   }
   try {
     serialPort = await navigator.serial.requestPort();
-    await serialPort.open({ baudRate: 115200 }); // ← BAUD RATE ARDUINO v7
+    await serialPort.open({ baudRate: 115200 });
 
     isSerialConnected = true;
     document.getElementById('serialDot').className = 'serial-dot connected';
-    document.getElementById('serialStatus').textContent = 'Arduino terhubung — menerima data...';
+    document.getElementById('serialStatus').textContent = 'Arduino terhubung via USB — menerima data...';
     document.getElementById('connectBtn').textContent = '✖ DISCONNECT';
     document.getElementById('connectBtn').onclick = disconnectSerial;
-    addLog('>> Arduino terhubung via Serial 115200 baud', 'raw');
-    addLog('>> Menunggu data sensor... (warm-up MQ2 ~60 detik)', 'info');
+    addLog('>> Terhubung via USB Serial 115200 baud', 'raw');
 
     const textDecoder = new TextDecoderStream();
     serialPort.readable.pipeTo(textDecoder.writable);
@@ -669,10 +690,10 @@ async function disconnectSerial() {
   if (serialReader) { try { await serialReader.cancel(); } catch(e){} serialReader = null; }
   if (serialPort)   { try { await serialPort.close();   } catch(e){} serialPort = null;   }
   document.getElementById('serialDot').className = 'serial-dot demo';
-  document.getElementById('serialStatus').textContent = 'Mode Demo — Data simulasi';
-  document.getElementById('connectBtn').textContent = '⚡ CONNECT ARDUINO';
+  document.getElementById('serialStatus').textContent = 'Mode Demo — data simulasi';
+  document.getElementById('connectBtn').textContent = '⚡ CONNECT USB (SERIAL)';
   document.getElementById('connectBtn').onclick = connectSerial;
-  addLog('>> Koneksi serial diputus', 'info');
+  addLog('>> Koneksi USB diputus', 'info');
 }
 
 async function readSerial() {
@@ -697,17 +718,7 @@ async function readSerial() {
   }
 }
 
-// =====================================================
-//  PARSER — format Arduino v7 (115200 baud)
-//  Baris data sensor : "Suhu:28.9C  Hum:55.0%  Gas:307  Jarak:7.1cm"
-//  Baris status      : "Status => Suhu:AMAN Hum:AMAN Gas:AMAN Jarak:BAYA"
-//  Baris keseluruhan : "KESELURUHAN: BAHAYA  -> LED Merah kedip"
-//  Threshold v7 bersifat fixed (tidak dikirim via serial), sudah
-//  diisi langsung di kalibData di atas sesuai #define Arduino.
-// =====================================================
 function parseSerialLine(line) {
-  // ---- Baris data sensor utama ----
-  // Contoh: "Suhu:28.9C  Hum:55.0%  Gas:307  Jarak:7.1cm"
   if (line.startsWith('Suhu:') && line.includes('Jarak:')) {
     const suhuM = line.match(/Suhu:([\d.]+)/);
     const humM  = line.match(/Hum:([\d.]+)/);
@@ -718,22 +729,79 @@ function parseSerialLine(line) {
     if (gasM)  sensorData.gas        = parseInt(gasM[1], 10);
     if (jrkM)  sensorData.jarak      = parseFloat(jrkM[1]);
     updateUI();
-    return;
   }
-
-  // Baris "Status => ..." dan "KESELURUHAN: ..." hanya informasional di log;
-  // status badge & LED tetap dihitung ulang dari sensorData supaya selalu konsisten
-  // dengan threshold yang tampil di panel.
 }
 
 // =====================================================
-//  AUTO SIMULASI (hanya jika belum konek Arduino)
+//  MODE CLOUD — ambil data dari ThingSpeak via WiFi (tanpa kabel USB)
+// =====================================================
+function toggleCloudConfig() {
+  if (isCloudMode) { stopCloudMode(); return; }
+  document.getElementById('cloudConfig').classList.toggle('open');
+}
+
+function startCloudMode() {
+  if (isSerialConnected) { addLog('Putuskan koneksi USB dulu sebelum pakai Cloud.', 'info'); return; }
+
+  const channelId = document.getElementById('tsChannelId').value.trim();
+  const readKey   = document.getElementById('tsReadKey').value.trim();
+  if (!channelId) { alert('Isi Channel ID ThingSpeak dulu.'); return; }
+
+  isCloudMode = true;
+  window._tsChannelId = channelId;
+  window._tsReadKey = readKey;
+
+  document.getElementById('serialDot').className = 'serial-dot cloud';
+  document.getElementById('serialStatus').textContent = 'Mode Cloud — mengambil data dari ThingSpeak...';
+  document.getElementById('cloudBtn').textContent = '✖ MATIKAN MODE CLOUD';
+  addLog('>> Mode Cloud aktif, polling ThingSpeak tiap ' + (CLOUD_POLL_MS/1000) + ' detik', 'cloud');
+
+  fetchCloudData();
+  cloudPollTimer = setInterval(fetchCloudData, CLOUD_POLL_MS);
+}
+
+function stopCloudMode() {
+  isCloudMode = false;
+  if (cloudPollTimer) { clearInterval(cloudPollTimer); cloudPollTimer = null; }
+  document.getElementById('serialDot').className = 'serial-dot demo';
+  document.getElementById('serialStatus').textContent = 'Mode Demo — data simulasi';
+  document.getElementById('cloudBtn').textContent = '☁ MODE CLOUD (WIFI / THINGSPEAK)';
+  document.getElementById('cloudConfig').classList.remove('open');
+  addLog('>> Mode Cloud dimatikan', 'info');
+}
+
+async function fetchCloudData() {
+  const channelId = window._tsChannelId;
+  const readKey = window._tsReadKey;
+  let url = `https://api.thingspeak.com/channels/${channelId}/feeds.json?results=1`;
+  if (readKey) url += `&api_key=${readKey}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const feed = data.feeds && data.feeds[0];
+    if (!feed) { addLog('Belum ada data di channel ini.', 'cloud'); return; }
+
+    sensorData.suhu       = parseFloat(feed.field1) || sensorData.suhu;
+    sensorData.kelembaban = parseFloat(feed.field2) || sensorData.kelembaban;
+    sensorData.gas        = parseInt(feed.field3)   || sensorData.gas;
+    sensorData.jarak      = parseFloat(feed.field4) || sensorData.jarak;
+
+    addLog(`[Cloud] Suhu:${sensorData.suhu} Hum:${sensorData.kelembaban} Gas:${sensorData.gas} Jarak:${sensorData.jarak} (${feed.created_at})`, 'cloud');
+    updateUI();
+  } catch (e) {
+    addLog('Cloud fetch error: ' + e.message, 'cloud');
+  }
+}
+
+// =====================================================
+//  AUTO SIMULASI (hanya jika belum konek USB atau Cloud)
 // =====================================================
 setInterval(() => {
-  if (!isSerialConnected) updateFromSimulation();
+  if (!isSerialConnected && !isCloudMode) updateFromSimulation();
 }, 2000);
 
-// Tampilkan threshold tetap saat halaman pertama dibuka
 updateKalibUI();
 updateFromSimulation();
 </script>
